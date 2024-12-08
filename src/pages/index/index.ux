@@ -1,0 +1,204 @@
+<template>
+  <div class="page" @swipe="about">
+    <text class="title" @click="toToday">{{ year }}-{{ displayMonth }}</text>
+    <div class="calendar" @click="click">
+      <div class="row">
+        <text class="cell">ПН</text>
+        <text class="cell">ВТ</text>
+        <text class="cell">СР</text>
+        <text class="cell">ЧТ</text>
+        <text class="cell">ПТ</text>
+        <text class="cell red">СБ</text>
+        <text class="cell red">ВС</text>
+      </div>
+      <div class="row" for="week in weeks" tid="week">
+        <text class="cell" style="{{todayStyle(week, day)}}" for="day in days">{{getDay(week, day)}}</text>
+      </div>
+      <text class="highlights">
+        {{displayHighlights}} {{error}}
+      </text>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+import file from '@system.file' 
+
+export default {
+  private: {
+    today: new Date(),
+    year: 2000,
+    month: 0,
+    day: 0,
+    start_index: 1,
+    days_in_month: 28,
+    highlights: {},
+    error: "",
+    // const
+    weeks: [0, 1, 2, 3, 4, 5],
+    days: [0, 1, 2, 3, 4, 5, 6],
+  },
+  computed: {
+    displayMonth() {
+      let formated = "00" + (this.month + 1)
+      return formated.substring(formated.length-2) 
+    },
+    displayHighlights() {
+      if(this.displayMonth in this.highlights) {
+        let result = ""
+        for(let key in this.highlights[this.displayMonth]) {
+          let value = this.highlights[this.displayMonth][key]
+          result += `${key}.${this.displayMonth}: ${value}\n`
+        }
+        return result
+      } else {
+        return "Нет информации"
+      }
+    }
+  },
+  toToday() {
+    let now = new Date()
+    this.year = now.getFullYear()
+    this.month = now.getMonth()
+    this.calculatePage()
+  },
+  click(event) {
+    if(event.pageX > 86) {
+      this.month++;
+      if(this.month >= 12) {
+        this.month = 0
+        this.year++
+      }
+    } else {
+      this.month--
+      if(this.month < 0) {
+        this.month = 11;
+        this.year--
+      }
+    }
+    this.calculatePage()
+  },
+  about(eve) {
+    console.log(eve.direction)
+    if(eve.direction === "left") {
+        router.push({
+          "uri": "pages/AboutScreen"
+        })
+    }
+    if(eve.direction === "right") {
+      this.$app.exit()
+    }
+  },
+  getDay(week, day) {
+    let index = week * 7 + day
+    if (index < this.start_index) return ""
+    if (index >= this.start_index + this.days_in_month) return "";
+    return "" + (index - this.start_index + 1)
+  },
+  todayStyle(week, day) {
+    let d = this.getDay(week, day)
+
+    let result = {}
+    if(this.displayMonth in this.highlights && d in this.highlights[this.displayMonth]) {
+      result.color = "#ffaaaa"
+    } else if(day > 4) {
+      result.color = "#ffaaaa"
+    } else {
+      result.color = "#ffffff"
+    }
+
+    result.border = "0px";
+    if(this.month == this.today.getMonth() && this.year == this.today.getFullYear()) {
+      if(this.today.getDate() == d) result.border = "2px";
+    }
+    return result
+  },
+  calculatePage() {
+    let start = new Date(this.year, this.month, 1)
+    let end = new Date(this.year, this.month + 1, 0)
+
+    this.days_in_month = end.getDate()
+    this.start_index = start.getDay() == 0 ? 6 : start.getDay() - 1
+  },
+  onInit() {
+    this.year = this.today.getFullYear()
+    this.month = this.today.getMonth();
+    this.calculatePage()
+
+    let self = this
+    file.readText({
+      "uri": "/common/highlights.txt",
+      "success": function(data) {
+        self.highlights = JSON.parse(data.text)
+      },
+      fail: function(data, code) {
+        console.log(`${code}: ${data}`)
+        self.error = `${code}: ${data}`
+      }
+    })
+  }
+}
+</script>
+
+<style>
+.page {
+  flex-direction: column;
+  justify-content: start;
+  align-items: start;
+  width: 192px;
+  height: 490px;
+  background-color: black;
+}
+
+.title {
+  font-size: 24px;
+  width: 192px;
+  height: 50px;
+  margin-top: 40px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: white;
+}
+
+.calendar {
+  width: 192px;
+  padding-left: 5px;
+  padding-right: 5px;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.row {
+  width: 100%;
+  height: 26px;
+  justify-content: center;
+  flex-direction: row;
+}
+
+.cell {
+  width: 26px;
+  height: 26px;
+  flex-direction: row;
+  font-size: 16px;
+  text-align: center;
+  color: white;
+  border-color: red;
+}
+.red {
+  color: #ffaaaa !important;
+}
+
+.today {
+  border: 2px;
+  border-color: red;
+}
+
+.highlights {
+  width: 192px;
+  color: white;
+  font-size: 18px;
+  margin-top: 16px;
+  margin-bottom: 60px;
+}
+</style>
